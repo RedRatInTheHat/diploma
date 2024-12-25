@@ -9,10 +9,15 @@
     * [simple-vms](https://github.com/RedRatInTheHat/simple-vms)
     * [simple-vmg](https://github.com/RedRatInTheHat/simple-vmg)
     * [simple-ab](https://github.com/RedRatInTheHat/simple-ab)
+* Сервисный аккаунт:
+    * [terraformer](https://github.com/RedRatInTheHat/terraformer)
 * Bucket для tfstate:
     * [terraform-bucket](https://github.com/RedRatInTheHat/terraform-backend)
 * Инфраструктура для kubernetes:
     * [terraform-for-k8s](https://github.com/RedRatInTheHat/terraform-for-k8s)
+* Контейнер со статическим сайтом:
+    * [static-site](https://github.com/RedRatInTheHat/static-site)
+    * [DockerHub](https://hub.docker.com/repository/docker/redratinthehat/static-mark/general)
 
 ## Решение
 
@@ -20,9 +25,9 @@
 
 #### Backend
 
-Для работы с инфраструктурой ранее создавался сервисный аккаунт `terraform`. Ему предоставлены некоторые доступы для создания ресурсов в отдельной папке diploma. `#TODO: приложить скриншот итоговых доступов.`
+Для работы с инфраструктурой ранее создавался сервисный аккаунт `terraform`, так что в коде [terraformer](https://github.com/RedRatInTheHat/terraformer) он импортируется. Ему предоставлены доступы editor'а и storage.admin'а для создания ресурсов в отдельной папке diploma и взаимодействия с объектами bucket'а.
 
-Добавлено создание S3 bucket'а с помощью Terraform; код содержится [отдельном репозитории](https://github.com/RedRatInTheHat/terraform-backend).
+Добавлено создание S3 bucket'а с помощью Terraform; код содержится в репозитории [terraform-backend](https://github.com/RedRatInTheHat/terraform-backend).
 
 В проект для создания инфраструктуры в Terraform подлкючен функционал сохранения файла состояний в S3 bucket'е: [main.tf](https://github.com/RedRatInTheHat/terraform-for-k8s/blob/master/main.tf)
 
@@ -62,4 +67,12 @@
 В файлах kubespray внесены следующие изменения:
 * файл `inventory/cluster/inventory.yaml` создаётся автоматически после создания виртуальных машин.
 * в файле `inventory/cluster/group_vars/k8s_cluster/addons.yml` подключен Nginx Ingress Controller (Раздел `# Nginx ingress controller deployment`).
+
+### Docker
+
+Для создания docker-контейнера со статическим сайтом, добавлен репозиторий [static-site](https://github.com/RedRatInTheHat/static-site). 
+
+В репозитории расположены конфигурация nginx, директория html со страницей в ней, и Dockerfile с инструкциями сборки контейнера.
+
+Контейнер выложен в [DockerHub](https://hub.docker.com/repository/docker/redratinthehat/static-mark/general).
 
