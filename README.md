@@ -76,6 +76,16 @@
 
 Контейнер выложен в [DockerHub](https://hub.docker.com/repository/docker/redratinthehat/static-mark/general).
 
+### Kubernetes
+
+В K8S поднимаются следующие составляющие:
+*  с выше описанным приложением, [deployment-ca.yml](https://github.com/RedRatInTheHat/diploma-k8s/blob/master/deployment-ca.yml);
+* сервис для этого приложения, [service-ca.yml](https://github.com/RedRatInTheHat/diploma-k8s/blob/master/service-ca.yml);
+* grafana-prometheus-node-exporter – запускается проект [kube-prometheus](https://github.com/prometheus-operator/kube-prometheus). Запускаются только apply описанным в нём способом, дополнительных настроек не вносится;
+* дополнительно настроиваются сетевые политики для подов Grafana, [grafana-network-policy.yml](https://github.com/RedRatInTheHat/diploma-k8s/blob/master/grafana-network-policy.yml), так как по умолчанию они доступны только внутренним подам, а мы стучимся с nginx-контроллера;
+* ingress для своего приложения, [ingress-ca.yml](https://github.com/RedRatInTheHat/diploma-k8s/blob/master/ingress-ca.yml);
+* ingress для grafana, [ingress-monitoring.yml](https://github.com/RedRatInTheHat/diploma-k8s/blob/master/ingress-monitoring.yml).
+
 ### Atlantis
 
 По описанию как будто должен располагаться в K8S кластере. И всё же было решено создать отдельную машину с Atlantis (причём в обычном docker-контейнере). А иначе получается, что сервис в K8S перестраивает сам себя.
@@ -88,4 +98,3 @@
 Что следовало бы изменить:
 * разворачивать на виртуальной машине необходимые структуры через Ansible.
 * удалять файлы конфигуаций сразу после поднятия контейнеров.
-
