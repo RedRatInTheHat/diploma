@@ -18,7 +18,7 @@
 * Контейнер со статическим сайтом:
     * [static-site](https://github.com/RedRatInTheHat/static-site)
     * [DockerHub](https://hub.docker.com/repository/docker/redratinthehat/static-mark/general)
-* Atlantis
+* Atlantis:
     * [diploma-atlantis](https://github.com/RedRatInTheHat/diploma-atlantis)
 
 ## Решение
@@ -31,11 +31,7 @@
 
 Добавлено создание S3 bucket'а с помощью Terraform; код содержится в репозитории [terraform-backend](https://github.com/RedRatInTheHat/terraform-backend).
 
-В проект для создания инфраструктуры в Terraform подлкючен функционал сохранения файла состояний в S3 bucket'е: [main.tf](https://github.com/RedRatInTheHat/terraform-for-k8s/blob/master/main.tf)
-
-Файл состояний успешно сохраняется в bucket'е:
-
-![alt text](img/1.2.png)
+В проект для создания инфраструктуры в Terraform подлкючен функционал сохранения файла состояний в S3 bucket'е: [main.tf](https://github.com/RedRatInTheHat/terraform-for-k8s/blob/master/main.tf).
 
 #### Инфраструктура для K8S
 
@@ -56,9 +52,6 @@
 Доступ пользователей к приложениям производится через публичный адрес роутера, а для health check настроено добавление название host'а в header'e.
 
 4. Группы безопасности не настроены, а зря.
-
-#TODO настроить группы безопасности
-#TODO настроить скриншоты для отображения того, что всё ок и поднялось.
 
 ### Ansible
 
@@ -153,3 +146,69 @@ kubectl apply -f manifests/
 Отдельно ото всего поднимается Atlantis:
 1. В директории `diploma-atlantis` запустить Terraform.
 2. IP поднятой машины закинуть в GitHub Webhooks проекта `terraform-for-k8s`.
+
+## Итог
+
+### Что сделано
+
+Сервисному аккаунту выданы права editor'а и storage.admin'а, и этого ему достаточно:
+
+![alt text](img/1.1.png)
+
+В Yandex Cloud созданы: 
+* 5 виртуальных машин (1 master, 2 worker'а, 1 bastion, 1 atlantis);
+* Load Balancer (со сопутствующими ему роутером, целевой группой и группой бэкендов);
+* 2 сети (так как atlantis поднимается отдельно и импортировать ему сеть придётся вручную, а это не весело);
+* Object Storage (для файлов состояний Terraform).
+
+![alt text](img/1.2.png)
+
+![alt text](img/1.3.png)
+
+![alt text](img/1.4.png)
+
+Создан и залит образ приложения, выдающего статическую страницу:
+
+![alt text](img/1.5.png)
+
+В кластере развёрнуты приложение и стек grafana-prometheus-node-exporter:
+
+![alt text](img/1.6.png)
+
+![alt text](img/1.7.png)
+
+![alt text](img/1.8.png)
+
+Приложения доступны:
+
+![alt text](img/1.9.png)
+
+![alt text](img/1.10.png)
+
+Настроен Atlantis; при pull-request'е он запускает plan и, при вводе команды, готов его применять:
+
+![alt text](img/1.11.png)
+
+https://github.com/RedRatInTheHat/terraform-for-k8s/pull/4
+
+![alt text](img/1.12.png)
+
+Настроен CI/CD для приложения со статической страницей:
+
+https://github.com/RedRatInTheHat/static-site/actions
+
+![alt text](img/1.13.png)
+
+![alt text](img/1.14.png)
+
+### Что стоило бы сделать (но Новый год)
+
+1. Создать группы безопасности – а-то у нас две машины наружу торчат, другие внутрь попрятали, а групп безопасности нет, осуждаемо.
+2. Использовать Ansible вместо Cloud-init.
+3. Собрать всё в единый процесс. Сейчас много этапов, как видно из раздела "Как это всё разворачивается", производится вручную, при том, что локальные файлы точно можно поправить скриптами, а для других процессов наверняка можно найти API.
+4. Доработать Atlantis – сейчас в `repos.yml` грубо перезаписывается процесс default, а можно организовать отдельный и подключать в `atlantis.yml`.
+5. В Deployment забирать не фиксированный образ, а последний (а-то мы в `static-site` поправили, а раскатывается всё ещё старая версия).
+6. При добавлении новых машин, k8s не раскатывается. Из-за этого те же группы виртуальных машин зависают, потому что новая машина не проходит healthcheck.
+    * Да и в целом, если машина отвалится, то на новой не поднимется k8s, а зачем тогда всё это.
+7. В `simple-vms` добавить default значения, а-то передавать много.
+8. Тоньше настроить Atlantis – сейчас он ловит целую кучу событий, а реагирует не на все (push вообще не распознаёт).
