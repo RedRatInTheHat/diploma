@@ -18,6 +18,8 @@
 * Контейнер со статическим сайтом:
     * [static-site](https://github.com/RedRatInTheHat/static-site)
     * [DockerHub](https://hub.docker.com/repository/docker/redratinthehat/static-mark/general)
+* Atlantis
+    * [diploma-atlantis](https://github.com/RedRatInTheHat/diploma-atlantis)
 
 ## Решение
 
@@ -104,3 +106,50 @@
 В проекте static-site настроен workflow для автоматического применения изменений в директории, [static-deploy.yml](https://github.com/RedRatInTheHat/static-site/blob/master/.github/workflows/static-deploy.yml).
 
 Образ собирается и отправляется в Docker Hub; в кластере K8S для Deployment'а применяется новый образ. Единственная загвоздка в создании SSH тоннеля – для этого приходится править конфигурации и, собственно, создавать тоннель через bastion host.
+
+## Как это всё разворачивается
+
+Как говорила моя преподавательница по линалу, с болью.
+
+### Кластер K8S
+
+1. В проекте terraform-for-k8s запускается `terraform apply`.
+2. IP созданного бастиона добавляется:
+    * В файл конфигурации `~/.ssh/config` заносится запись вида:
+    ```
+    Host bastion
+        Hostname <bastion_ip>
+        User <username>
+
+    Host 192.168.*
+        ProxyJump bastion
+        User <username>
+    ```
+    * В переменную BASTION_IP для проекта `static-site` (GitHub).
+3. Сложить внутренний ip master'а в переменную `K8S_SERVER` для проекта `static-site` (GitHub).
+3. Запустить `kubespray`. В моей структуре файл `invetnory.yaml` складывается сразу в нужную директорию; в противном случае его нужно нести руками.<br/>
+Итак, запускается `ansible-playbook -i inventory/cluster/inventory.yaml cluster.yml -b`.<br/>
+Ждётся.
+4. Забрать config из master'а и сложить:
+    * в `.kube/config` на рабочей машине
+    * в переменную KUBE_CONFIG для проекта `static-site` (GitHub).
+5. Настроить тоннель на рабочей машине: `ssh -fN -L 6443:<master_ip>:6443 ubuer@<bastion_ip>` (периодически убивать и создавать снова, потому что зависает, а добавить в cloud-init редактирование файла `sshd_config` всё руки не доходят).
+7. Установить `kube-prometheus` – тут без неожиданностей, всё устанавливается командами, рекомендованными разработчиками.
+```
+kubectl apply --server-side -f manifests/setup
+kubectl wait --for condition=Established --all CustomResourceDefinition --namespace=monitoring
+kubectl apply -f manifests/
+``` 
+8. Подключить свои элементы K8S `kubectl apply -f k8s/`.
+9. Дождаться, пока выздоровеет балансировщик.
+10. Обновить `/etc/hosts`:
+```
+<ip_балансировщика> static.redrat.diploma
+<ip_балансировщика> grafana.redrat.diploma
+```
+11. Создать пользователя в Grafana.<br/>
+Доски там как будто и без того хороши, так что дополнительных не добавлено.
+
+Отдельно ото всего поднимается Atlantis:
+1. В директории `diploma-atlantis` запустить Terraform.
+2. IP поднятой машины закинуть в GitHub Webhooks проекта `terraform-for-k8s`.
